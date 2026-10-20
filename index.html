@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121514">
+<title>Filament Shelf</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23DDA94C'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23121514'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<style>
+/* Layout: a workshop shelf — status strip, assistant bar, spool grid, print log. Cool cement neutrals, PEI-bronze accent. */
+:root{
+  --bg:#ECEFEE; --surface:#FAFBFA; --sunk:#E2E6E4; --ink:#1A1F1D; --muted:#5B6461; --line:#CDD3D0;
+  --accent:#8F6418; --accent-ink:#FFFFFF; --low:#B43C0F; --low-bg:#FBE7DD; --ok:#2F7A4F;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121514; --surface:#1B1F1E; --sunk:#0E1110; --ink:#E6EAE8; --muted:#97A19D; --line:#2C3331;
+  --accent:#DDA94C; --accent-ink:#1A1408; --low:#F28B54; --low-bg:#3A1F12; --ok:#6CC490; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121514; --surface:#1B1F1E; --sunk:#0E1110; --ink:#E6EAE8; --muted:#97A19D; --line:#2C3331;
+  --accent:#DDA94C; --accent-ink:#1A1408; --low:#F28B54; --low-bg:#3A1F12; --ok:#6CC490; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--display);font-weight:800;letter-spacing:.01em;margin:0;text-wrap:balance;text-transform:uppercase}
+h1{font-size:clamp(34px,6vw,52px);line-height:.95}
+h2{font-size:22px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mono,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 12px;font-weight:700;font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:4px 8px}
+.btn.ghost:hover{color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:700}
+
+header.top{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap}
+.stats{display:flex;gap:28px;flex-wrap:wrap}
+.stat .v{font-family:var(--mono);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .v small{font-size:13px;color:var(--muted);font-weight:400;margin-left:2px}
+.stat.warn .v{color:var(--low)}
+
+.banner{background:var(--low-bg);color:var(--low);border-radius:6px;padding:10px 14px;font-size:14px}
+
+/* assistant */
+.agent{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.agent-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.agent-row textarea{flex:1 1 320px;resize:vertical;min-height:46px}
+.agent-row .btn{align-self:stretch;min-width:110px}
+.agent .hint{font-size:13px;color:var(--muted)}
+.proposal{border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.proposal p{margin:0}
+.act{display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--sunk);border-radius:6px;font-size:14px}
+.act input{width:auto}
+.act .dot{width:12px;height:12px;border-radius:50%;flex:none;border:1px solid var(--line)}
+.act .what{min-width:0;flex:1}
+.proposal .bar{display:flex;gap:8px;flex-wrap:wrap}
+
+/* spools */
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.section-head .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.spool{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.spool.low{border-color:var(--low)}
+.spool-top{display:flex;gap:14px;align-items:center}
+.reel{--p:50;--c:#888;width:78px;height:78px;border-radius:50%;flex:none;position:relative;
+  background:conic-gradient(var(--c) calc(var(--p)*1%),var(--sunk) 0);border:1px solid var(--line)}
+.reel::after{content:"";position:absolute;inset:26%;border-radius:50%;background:var(--surface);border:1px solid var(--line)}
+.reel span{position:absolute;inset:0;display:grid;place-items:center;z-index:1;font-family:var(--mono);font-size:11px;font-weight:600}
+.spool h3{margin:0;font-size:16px;line-height:1.25;overflow-wrap:anywhere}
+.meta{font-size:12px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--muted)}
+.chip.low{border-color:var(--low);color:var(--low);background:var(--low-bg)}
+.chip.ex{border-style:dashed}
+.figs{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px}
+.figs dt{color:var(--muted)} .figs dd{margin:0;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.spool-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.inline-form{display:flex;gap:6px;align-items:end;flex-wrap:wrap}
+.inline-form label{flex:1 1 90px}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--muted)}
+
+/* add spool */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.panel .full{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.panel input[type=color]{padding:2px;height:40px}
+
+/* log */
+.log{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.log table{width:100%;border-collapse:collapse;font-size:14px;min-width:480px}
+.log th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+.log td{padding:9px 14px;border-bottom:1px solid var(--line)}
+.log tr:last-child td{border-bottom:0}
+.log td.r,.log th.r{text-align:right}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;z-index:20}
+@media (prefers-reduced-motion:no-preference){.reel{transition:background .4s}}
+.sync-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.sync-state{font-size:14px}.sync-state.warn{color:var(--low)}
+.sync-btns{display:flex;gap:8px}
+.sync-form{display:flex;flex-direction:column;gap:12px;border-top:1px dashed var(--line);padding-top:12px}
+.sync-form .hint{margin:0;font-size:13px;color:var(--muted);max-width:70ch}
+.sync-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+footer{display:flex;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Spool inventory · 1.75 mm</div>
+      <h1>Filament Shelf</h1>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="eyebrow">Spools</div><div class="v" id="sCount">–</div></div>
+      <div class="stat"><div class="eyebrow">On hand</div><div class="v" id="sGrams">–</div></div>
+      <div class="stat" id="sLowWrap"><div class="eyebrow">Running low</div><div class="v" id="sLow">–</div></div>
+      <div class="stat"><div class="eyebrow">Used, 30 days</div><div class="v" id="sUsed">–</div></div>
+    </div>
+  </header>
+
+  <section class="agent" aria-labelledby="syncH">
+    <div class="sync-row">
+      <div>
+        <div class="eyebrow" id="syncH">Sync</div>
+        <div id="syncState" class="sync-state">Saved in this browser only</div>
+      </div>
+      <div class="sync-btns">
+        <button class="btn" id="refreshBtn" hidden>Refresh</button>
+        <button class="btn" id="syncToggle">Set up sync</button>
+      </div>
+    </div>
+    <form id="syncForm" class="sync-form" hidden>
+      <p class="hint">Your spools are stored in a secret GitHub Gist, so every browser where you enter the same token sees the same shelf. Create a token at <b>github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)</b> with only the <span class="mono">gist</span> scope. The token stays in this browser.</p>
+      <div class="sync-fields">
+        <label>GitHub token<input id="tokIn" type="password" autocomplete="off" placeholder="ghp_…" required></label>
+        <label>Gist ID (leave empty on your first device)<input id="gistIn" autocomplete="off" placeholder="created automatically"></label>
+      </div>
+      <div class="bar"><button type="button" class="btn ghost" id="syncCancel">Cancel</button><button class="btn ghost" type="button" id="syncOff" hidden>Disconnect this browser</button><button class="btn primary">Connect</button></div>
+    </form>
+  </section>
+
+  <section aria-labelledby="spoolsH">
+    <div class="section-head">
+      <h2 id="spoolsH">Spools</h2>
+      <div class="tools">
+        <select id="filterMat" aria-label="Filter by material" style="width:auto"><option value="">All materials</option></select>
+        <button class="btn" id="toggleArchived">Show empty</button>
+        <button class="btn primary" id="openAdd">Add spool</button>
+      </div>
+    </div>
+    <form class="panel" id="addForm" hidden>
+      <label>Name<input id="fName" required placeholder="Galaxy Black"></label>
+      <label>Brand<input id="fBrand" placeholder="Polymaker"></label>
+      <label>Material<select id="fMat"></select></label>
+      <label>Colour<input id="fColor" type="color" value="#2b2b2b"></label>
+      <label>Net weight (g)<input id="fTotal" type="number" min="1" value="1000"></label>
+      <label>Remaining (g)<input id="fRemain" type="number" min="0" placeholder="same as net"></label>
+      <label>Empty spool (g)<input id="fTare" type="number" min="0" placeholder="for weigh-ins, e.g. 220"></label>
+      <label>Price paid (₹)<input id="fPrice" type="number" min="0" placeholder="optional"></label>
+      <div class="full"><button type="button" class="btn" id="cancelAdd">Cancel</button><button class="btn primary" type="submit">Save spool</button></div>
+    </form>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="emptySpools" hidden>No spools on the shelf yet. Press <b>Add spool</b> to put your first one here.</div>
+  </section>
+
+  <section aria-labelledby="logH">
+    <div class="section-head"><h2 id="logH">Print log</h2><span class="meta">Latest 40 entries</span></div>
+    <div class="log"><table>
+      <thead><tr><th>When</th><th>What</th><th>Spool</th><th class="r">Used</th><th></th></tr></thead>
+      <tbody id="logBody"></tbody>
+    </table></div>
+  </section>
+  <footer class="meta">Backup: <button class="btn ghost" id="exportBtn">Copy data as JSON</button></footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const DENS={PLA:1.24,"PLA+":1.24,PETG:1.27,ABS:1.04,ASA:1.07,TPU:1.21,Nylon:1.14,PC:1.20,"PLA-CF":1.29,"PETG-CF":1.30,Other:1.24};
+const AREA=Math.PI*0.875*0.875, LOW_G=150, LOW_FRAC=0.15, FILE="filament-shelf.json";
+let data={spools:[],prints:[]}, showArchived=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtG=g=>g>=1000?(g/1000).toFixed(2)+" kg":Math.round(g)+" g";
+const meters=(g,mat)=>g/(DENS[mat]||1.24)/AREA;
+const isLow=s=>!s.archived&&(s.remaining<LOW_G||s.remaining/(s.total||1000)<LOW_FRAC);
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
+function ago(iso){const d=(Date.now()-new Date(iso))/864e5;if(d<1/24)return"just now";if(d<1)return Math.round(d*24)+" h ago";if(d<14)return Math.round(d)+" d ago";return new Date(iso).toLocaleDateString(undefined,{day:"numeric",month:"short"})}
+const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch{}}};
+
+/* ---------- storage: localStorage always, GitHub Gist when connected ---------- */
+let token=ls.get("fs.token"), gistId=ls.get("fs.gist"), saving=null, dirty=false;
+const gh=(path,opt={})=>fetch("https://api.github.com"+path,{...opt,headers:{Authorization:"Bearer "+token,Accept:"application/vnd.github+json","Content-Type":"application/json",...(opt.headers||{})}})
+  .then(async r=>{if(!r.ok){const e=new Error(r.status===401?"GitHub rejected the token":r.status===404?"Gist not found for this token":"GitHub error "+r.status);e.status=r.status;throw e}return r.json()});
+function setState(t,warn){const el=$("syncState");el.textContent=t;el.classList.toggle("warn",!!warn)}
+async function pull(){
+  if(!token||!gistId)return;
+  setState("Loading from GitHub…");
+  const g=await gh("/gists/"+gistId);
+  const f=g.files?.[FILE];
+  let content=f?.content;
+  if(f?.truncated&&f.raw_url)content=await fetch(f.raw_url).then(r=>r.text());
+  if(content){const d=JSON.parse(content);data={spools:d.spools||[],prints:d.prints||[]};ls.set("fs.data",JSON.stringify(data))}
+  setState("Synced with GitHub · "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}));
+  render();
+}
+async function push(){
+  if(!token||!gistId)return;
+  if(saving){dirty=true;return}
+  setState("Saving…");
+  saving=gh("/gists/"+gistId,{method:"PATCH",body:JSON.stringify({files:{[FILE]:{content:JSON.stringify(data,null,1)}}})})
+    .then(()=>setState("Synced with GitHub · "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})))
+    .catch(e=>setState("Not synced: "+e.message+". Changes are kept in this browser.",true))
+    .finally(()=>{saving=null;if(dirty){dirty=false;push()}});
+}
+function commit(){data.updated=new Date().toISOString();ls.set("fs.data",JSON.stringify(data));render();push()}
+function syncUi(){
+  const on=!!(token&&gistId);
+  $("syncToggle").textContent=on?"Sync settings":"Set up sync";
+  $("refreshBtn").hidden=!on;$("syncOff").hidden=!on;
+  if(!on)setState("Saved in this browser only. Set up sync to use it on other devices.");
+}
+$("syncToggle").onclick=()=>{$("syncForm").hidden=!$("syncForm").hidden;$("tokIn").value=token||"";$("gistIn").value=gistId||""};
+$("syncCancel").onclick=()=>$("syncForm").hidden=true;
+$("syncOff").onclick=()=>{token=gistId=null;ls.set("fs.token",null);ls.set("fs.gist",null);$("syncForm").hidden=true;syncUi();toast("This browser is disconnected. Your data is still in the Gist.")};
+$("refreshBtn").onclick=()=>pull().catch(e=>setState("Couldn't load: "+e.message,true));
+$("syncForm").onsubmit=async e=>{
+  e.preventDefault();
+  token=$("tokIn").value.trim();const want=$("gistIn").value.trim().replace(/^.*\//,"");
+  try{
+    if(want){gistId=want;ls.set("fs.token",token);ls.set("fs.gist",gistId);await pull();toast("Connected. Loaded your shelf.")}
+    else{
+      setState("Creating your private Gist…");
+      const g=await gh("/gists",{method:"POST",body:JSON.stringify({description:"Filament Shelf data",public:false,files:{[FILE]:{content:JSON.stringify(data,null,1)}}})});
+      gistId=g.id;ls.set("fs.token",token);ls.set("fs.gist",gistId);
+      setState("Synced with GitHub");toast("Sync is on. Copy the Gist ID from Sync settings for your other devices.");
+    }
+    $("syncForm").hidden=true;syncUi();
+  }catch(err){token=ls.get("fs.token");gistId=ls.get("fs.gist");setState("Couldn't connect: "+err.message,true);syncUi()}
+};
+window.addEventListener("focus",()=>{if(token&&gistId&&!saving)pull().catch(()=>{})});
+
+/* ---------- render ---------- */
+Object.keys(DENS).forEach(m=>$("fMat").add(new Option(m,m)));
+function render(){
+  const {spools,prints}=data, active=spools.filter(s=>!s.archived);
+  $("sCount").textContent=active.length;
+  const unit=v=>fmtG(v).replace(/ (k?g)$/,"<small>$1</small>");
+  $("sGrams").innerHTML=unit(active.reduce((a,s)=>a+s.remaining,0));
+  const low=active.filter(isLow).length;$("sLow").textContent=low;$("sLowWrap").classList.toggle("warn",low>0);
+  const cut=Date.now()-30*864e5;$("sUsed").innerHTML=unit(prints.filter(p=>new Date(p.at)>cut).reduce((a,p)=>a+(p.grams||0),0));
+  const fm=$("filterMat"),cur=fm.value,mats=[...new Set(spools.map(s=>s.material))].sort();
+  fm.innerHTML='<option value="">All materials</option>'+mats.map(m=>`<option${m===cur?" selected":""}>${esc(m)}</option>`).join("");
+  $("toggleArchived").textContent=showArchived?"Hide empty":"Show empty";
+  const list=spools.filter(s=>showArchived||!s.archived).filter(s=>!fm.value||s.material===fm.value)
+    .sort((a,b)=>(a.archived-b.archived)||(isLow(b)-isLow(a))||a.material.localeCompare(b.material)||a.name.localeCompare(b.name));
+  $("emptySpools").hidden=!!list.length;
+  $("grid").innerHTML=list.map(s=>{
+    const pct=Math.max(0,Math.min(100,s.remaining/(s.total||1000)*100)),perG=s.price&&s.total?s.price/s.total:null;
+    return `<article class="spool${isLow(s)?" low":""}" data-id="${esc(s.id)}">
+      <div class="spool-top">
+        <div class="reel" style="--p:${pct.toFixed(1)};--c:${esc(s.color||"#888")}" role="img" aria-label="${Math.round(pct)}% left"><span>${Math.round(pct)}%</span></div>
+        <div style="min-width:0"><h3>${esc(s.name)}</h3><div class="meta">${esc(s.brand||"")}${s.brand?" · ":""}${esc(s.material)}</div>
+          <div class="chips">${isLow(s)?'<span class="chip low">Low</span>':""}${s.archived?'<span class="chip">Empty</span>':""}</div></div>
+      </div>
+      <dl class="figs">
+        <dt>Remaining</dt><dd>${Math.round(s.remaining)} / ${Math.round(s.total)} g</dd>
+        <dt>Length left</dt><dd>≈ ${meters(s.remaining,s.material).toFixed(0)} m</dd>
+        ${perG?`<dt>Value left</dt><dd>₹${Math.round(perG*s.remaining)}</dd>`:""}
+        ${s.tare?`<dt>Empty spool</dt><dd>${Math.round(s.tare)} g</dd>`:""}
+      </dl>
+      <div class="spool-actions" data-slot>
+        ${s.archived?`<button class="btn" data-act="restore">Restore</button>`:`<button class="btn" data-act="use">Log print</button><button class="btn" data-act="weigh">Weigh-in</button>`}
+        <button class="btn ghost" data-act="${s.archived?"delete":"archive"}">${s.archived?"Delete":"Mark empty"}</button>
+      </div></article>`}).join("");
+  const byId=Object.fromEntries(spools.map(s=>[s.id,s]));
+  const recent=[...prints].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,40);
+  $("logBody").innerHTML=recent.length?recent.map(p=>{const s=byId[p.spoolId];return `<tr>
+    <td class="meta" title="${esc(new Date(p.at).toLocaleString())}">${ago(p.at)}</td><td>${esc(p.title||"Print")}</td>
+    <td>${s?`<span class="swatch" style="background:${esc(s.color)}"></span>${esc(s.name)}`:'<span class="meta">removed spool</span>'}</td>
+    <td class="r num">${Math.round(p.grams)} g</td><td class="r"><button class="btn ghost" data-undo="${esc(p.id)}">Undo</button></td></tr>`}).join("")
+    :'<tr><td colspan="5" class="meta">Prints you log will show here, newest first.</td></tr>';
+}
+
+/* ---------- actions ---------- */
+const spool=id=>data.spools.find(s=>s.id===id);
+$("grid").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-act]");if(!b)return;
+  const card=b.closest(".spool"),s=spool(card.dataset.id),slot=card.querySelector("[data-slot]"),act=b.dataset.act;
+  if(act==="use"||act==="weigh"){
+    const isUse=act==="use";
+    slot.innerHTML=`<form class="inline-form">${isUse?`<label>What<input name="t" placeholder="Benchy"></label><label>Grams<input name="g" type="number" min="0" step="0.1" required></label>`
+      :`<label>${s.tare?"Scale reading (g)":"Filament left (g)"}<input name="g" type="number" min="0" required></label>`}
+      <button class="btn primary">Save</button><button type="button" class="btn ghost" data-act="cancel">Cancel</button></form>`;
+    slot.querySelector("input").focus();
+    slot.querySelector("form").onsubmit=ev=>{ev.preventDefault();const f=ev.target,g=Number(f.g.value)||0;
+      if(isUse){data.prints.push({id:uid(),spoolId:s.id,grams:g,title:f.t.value||"Print",at:new Date().toISOString()});s.remaining=Math.max(0,s.remaining-g);toast(`Logged ${g} g from ${s.name}`)}
+      else{s.remaining=Math.max(0,Math.round(s.tare?g-s.tare:g));toast(`${s.name}: ${s.remaining} g left`)}
+      commit()};
+    return;
+  }
+  if(act==="cancel")return render();
+  if(act==="archive"){s.archived=true;toast(`${s.name} marked empty`)}
+  if(act==="restore")s.archived=false;
+  if(act==="delete"){if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Tap again to delete";b.style.color="var(--low)";setTimeout(render,3500);return}
+    data.spools=data.spools.filter(x=>x!==s);toast("Spool deleted")}
+  commit();
+});
+$("logBody").addEventListener("click",e=>{
+  const b=e.target.closest("[data-undo]");if(!b)return;
+  const p=data.prints.find(x=>x.id===b.dataset.undo);if(!p)return;
+  const s=spool(p.spoolId);if(s)s.remaining+=p.grams;
+  data.prints=data.prints.filter(x=>x!==p);toast(`Put ${Math.round(p.grams)} g back`);commit();
+});
+$("filterMat").onchange=render;
+$("toggleArchived").onclick=()=>{showArchived=!showArchived;render()};
+$("openAdd").onclick=()=>{$("addForm").hidden=false;$("fName").focus()};
+$("cancelAdd").onclick=()=>$("addForm").hidden=true;
+$("addForm").onsubmit=e=>{e.preventDefault();const total=Number($("fTotal").value)||1000,r=$("fRemain").value;
+  data.spools.push({id:uid(),name:$("fName").value,brand:$("fBrand").value,material:$("fMat").value,color:$("fColor").value,total,
+    remaining:r!==""?Number(r):total,tare:Number($("fTare").value)||0,price:Number($("fPrice").value)||0,archived:false,added:new Date().toISOString()});
+  e.target.reset();$("addForm").hidden=true;toast("Spool added");commit()};
+$("exportBtn").onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(data,null,1));toast("Copied your data to the clipboard")}catch{toast("Copy isn't allowed here")}};
+
+/* ---------- boot ---------- */
+try{const d=JSON.parse(ls.get("fs.data")||"null");if(d)data={spools:d.spools||[],prints:d.prints||[]}}catch{}
+syncUi();render();
+if(token&&gistId)pull().catch(e=>setState("Couldn't load from GitHub: "+e.message+". Showing this browser's copy.",true));
+</script>
+
+</body>
+</html>
