@@ -130,6 +130,8 @@ label.check input{width:auto}
 .sale-form input{width:80px;padding:4px 6px}
 .sale-form .btn{padding:4px 8px}
 .log table{min-width:720px}
+.chip.qty{border-color:var(--accent);color:var(--accent)}
+.inline-form .opt{flex-basis:100%;margin:0;font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -198,10 +200,11 @@ label.check input{width:auto}
       <label>Brand<input id="fBrand" placeholder="Polymaker"></label>
       <label>Material<select id="fMat"></select></label>
       <label>Colour<input id="fColor" type="color" value="#2b2b2b"></label>
-      <label>Net weight (g)<input id="fTotal" type="number" min="1" value="1000"></label>
-      <label>Remaining (g)<input id="fRemain" type="number" min="0" placeholder="same as net"></label>
+      <label>Quantity (spools)<input id="fQty" type="number" min="1" step="1" value="1"></label>
+      <label>Net weight per spool (g)<input id="fTotal" type="number" min="1" value="1000"></label>
+      <label>Left on the open spool (g)<input id="fRemain" type="number" min="0" placeholder="full"></label>
       <label>Empty spool (g)<input id="fTare" type="number" min="0" placeholder="for weigh-ins, e.g. 220"></label>
-      <label>Price paid (₹)<input id="fPrice" type="number" min="0" placeholder="e.g. 1299"></label>
+      <label>Price per spool (₹)<input id="fPrice" type="number" min="0" placeholder="e.g. 1299"></label>
       <div class="full"><button type="button" class="btn" id="cancelAdd">Cancel</button><button class="btn primary" type="submit">Save spool</button></div>
     </form>
     <div class="grid" id="grid"></div>
@@ -227,7 +230,10 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmtG=g=>g>=1000?(g/1000).toFixed(2)+" kg":Math.round(g)+" g";
 const meters=(g,mat)=>g/(DENS[mat]||1.24)/AREA;
-const isLow=s=>!s.archived&&(s.remaining<LOW_G||s.remaining/(s.total||1000)<LOW_FRAC);
+const qtyOf=s=>Math.max(1,Math.round(s.qty||1));            // spools on hand, incl. the open one
+const onHand=s=>s.archived?0:s.remaining+(qtyOf(s)-1)*(s.total||1000); // grams across all spools
+const isLow=s=>!s.archived&&qtyOf(s)===1&&(s.remaining<LOW_G||s.remaining/(s.total||1000)<LOW_FRAC);
+const salesOf=s=>s.sales||[];
 const rs=v=>(v<0?"−₹":"₹")+Math.abs(Math.round(v)).toLocaleString("en-IN");
 const cpg=s=>s&&s.price&&s.total?s.price/s.total:0; // rupees per gram
 const costOf=p=>{const s=data.spools.find(x=>x.id===p.spoolId);return s&&cpg(s)?p.grams*cpg(s):(p.cost||0)};
@@ -235,6 +241,12 @@ const isSold=p=>typeof p.sale==="number";
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
 function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
 function ago(iso){const d=(Date.now()-new Date(iso))/864e5;if(d<1/24)return"just now";if(d<1)return Math.round(d*24)+" h ago";if(d<14)return Math.round(d)+" d ago";return new Date(iso).toLocaleDateString(undefined,{day:"numeric",month:"short"})}
+/* Bring older saved data up to date: whole-spool sales used to be single fields on the spool. */
+function normalize(d){const spools=(d.spools||[]).map(s=>{s={...s};
+    if(s.sold&&!s.sales){s.sales=[{qty:1,for:s.soldFor||0,cost:s.soldCost||0,grams:s.soldGrams||0,at:s.updated||s.added||new Date().toISOString(),prevQty:1,prevRemaining:s.soldGrams||0}];s.soldOut=true}
+    delete s.sold;delete s.soldFor;delete s.soldCost;delete s.soldGrams;
+    if(!s.qty)s.qty=1;if(!s.bought)s.bought=s.qty;return s});
+  return {spools,prints:d.prints||[]}}
 const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch{}}};
 
 /* ---------- storage: localStorage always, GitHub Gist when connected ---------- */
@@ -249,7 +261,7 @@ async function pull(){
   const f=g.files?.[FILE];
   let content=f?.content;
   if(f?.truncated&&f.raw_url)content=await fetch(f.raw_url).then(r=>r.text());
-  if(content){const d=JSON.parse(content);data={spools:d.spools||[],prints:d.prints||[]};ls.set("fs.data",JSON.stringify(data))}
+  if(content){data=normalize(JSON.parse(content));ls.set("fs.data",JSON.stringify(data))}
   setState("Synced with GitHub · "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}));
   render();
 }
@@ -295,19 +307,20 @@ function render(){
   const {spools,prints}=data, active=spools.filter(s=>!s.archived);
   $("sCount").textContent=active.length;
   const unit=v=>fmtG(v).replace(/ (k?g)$/,"<small>$1</small>");
-  $("sGrams").innerHTML=unit(active.reduce((a,s)=>a+s.remaining,0));
+  $("sCount").textContent=active.reduce((a,s)=>a+qtyOf(s),0);
+  $("sGrams").innerHTML=unit(active.reduce((a,s)=>a+onHand(s),0));
   const low=active.filter(isLow).length;$("sLow").textContent=low;$("sLowWrap").classList.toggle("warn",low>0);
   const cut=Date.now()-30*864e5;$("sUsed").innerHTML=unit(prints.filter(p=>new Date(p.at)>cut).reduce((a,p)=>a+(p.grams||0),0));
 
   /* money */
   const sum=(arr,f)=>arr.reduce((a,x)=>a+(f(x)||0),0);
-  const soldP=prints.filter(isSold), soldS=spools.filter(s=>s.sold);
-  const sales=sum(soldP,p=>p.sale)+sum(soldS,s=>s.soldFor);
-  const soldCost=sum(soldP,costOf)+sum(soldS,s=>s.soldCost);
+  const soldP=prints.filter(isSold), allSales=spools.flatMap(salesOf);
+  const sales=sum(soldP,p=>p.sale)+sum(allSales,x=>x.for);
+  const soldCost=sum(soldP,costOf)+sum(allSales,x=>x.cost);
   const failed=sum(prints.filter(p=>p.failed),costOf);
   const profit=sales-soldCost, net=profit-failed;
-  $("mSpent").textContent=rs(sum(spools,s=>s.price));
-  $("mStock").textContent=rs(sum(active,s=>s.remaining*cpg(s)));
+  $("mSpent").textContent=rs(sum(spools,s=>(s.price||0)*(s.bought||qtyOf(s))));
+  $("mStock").textContent=rs(sum(active,s=>onHand(s)*cpg(s)));
   $("mSales").textContent=rs(sales);
   $("mSoldCost").textContent=rs(soldCost);
   $("mProfit").textContent=rs(profit);$("mProfit").className=profit<0?"neg":profit>0?"pos":"";
@@ -325,27 +338,31 @@ function render(){
   $("emptySpools").hidden=!!list.length;
   $("grid").innerHTML=list.map(s=>{
     const pct=Math.max(0,Math.min(100,s.remaining/(s.total||1000)*100)),perG=cpg(s);
-    const mine=prints.filter(p=>p.spoolId===s.id), mySold=mine.filter(isSold);
-    const earned=sum(mySold,p=>p.sale)+(s.sold?s.soldFor:0);
-    const myProfit=earned-sum(mySold,costOf)-(s.sold?s.soldCost:0)-sum(mine.filter(p=>p.failed),costOf);
+    const mine=prints.filter(p=>p.spoolId===s.id), mySold=mine.filter(isSold), q=qtyOf(s), sl=salesOf(s);
+    const earned=sum(mySold,p=>p.sale)+sum(sl,x=>x.for);
+    const myProfit=earned-sum(mySold,costOf)-sum(sl,x=>x.cost)-sum(mine.filter(p=>p.failed),costOf);
+    const soldN=sum(sl,x=>x.qty);
     return `<article class="spool${isLow(s)?" low":""}" data-id="${esc(s.id)}">
       <div class="spool-top">
         <div class="reel" style="--p:${pct.toFixed(1)};--c:${esc(s.color||"#888")}" role="img" aria-label="${Math.round(pct)}% left"><span>${Math.round(pct)}%</span></div>
         <div style="min-width:0"><h3>${esc(s.name)}</h3><div class="meta">${esc(s.brand||"")}${s.brand?" · ":""}${esc(s.material)}</div>
-          <div class="chips">${isLow(s)?'<span class="chip low">Low</span>':""}${s.sold?'<span class="chip">Sold</span>':s.archived?'<span class="chip">Empty</span>':""}</div></div>
+          <div class="chips">${!s.archived?`<span class="chip qty">×${q} spool${q>1?"s":""}</span>`:""}${isLow(s)?'<span class="chip low">Low</span>':""}${s.archived?(sl.length&&s.soldOut?'<span class="chip">Sold</span>':'<span class="chip">Empty</span>'):""}</div></div>
       </div>
       <dl class="figs">
-        <dt>Remaining</dt><dd>${Math.round(s.remaining)} / ${Math.round(s.total)} g</dd>
-        <dt>Length left</dt><dd>≈ ${meters(s.remaining,s.material).toFixed(0)} m</dd>
-        <dt>Price paid</dt><dd>${s.price?`${rs(s.price)} <span class="meta">(${rs(perG*1000)}/kg)</span>`:'<span class="meta">not set</span>'}</dd>
-        ${perG&&!s.archived?`<dt>Value left</dt><dd>${rs(perG*s.remaining)}</dd>`:""}
-        ${s.sold?`<dt>Spool sold for</dt><dd>${rs(s.soldFor)}</dd>`:""}
+        ${!s.archived?`<dt>Quantity</dt><dd>${q>1?`1 open + ${q-1} sealed`:"1 open"}</dd>`:""}
+        <dt>Open spool</dt><dd>${Math.round(s.remaining)} / ${Math.round(s.total)} g</dd>
+        ${q>1&&!s.archived?`<dt>Total on hand</dt><dd>${fmtG(onHand(s))}</dd>`:""}
+        <dt>Length left</dt><dd>≈ ${meters(onHand(s),s.material).toFixed(0)} m</dd>
+        <dt>Price per spool</dt><dd>${s.price?`${rs(s.price)} <span class="meta">(${rs(perG*1000)}/kg)</span>`:'<span class="meta">not set</span>'}</dd>
+        ${s.price&&(s.bought||q)>1?`<dt>Bought</dt><dd>${s.bought||q} × ${rs(s.price)} = ${rs((s.bought||q)*s.price)}</dd>`:""}
+        ${perG&&!s.archived?`<dt>Value on hand</dt><dd>${rs(perG*onHand(s))}</dd>`:""}
+        ${soldN?`<dt>Spools sold</dt><dd>${soldN} for ${rs(sum(sl,x=>x.for))}</dd>`:""}
         ${earned||myProfit?`<dt>Earned</dt><dd>${rs(earned)}</dd><dt>Profit</dt><dd class="${myProfit<0?"neg":"pos"}">${rs(myProfit)}</dd>`:""}
         ${s.tare?`<dt>Empty spool</dt><dd>${Math.round(s.tare)} g</dd>`:""}
       </dl>
       <div class="spool-actions" data-slot>
-        ${s.archived?`<button class="btn" data-act="restore">${s.sold?"Undo sale":"Restore"}</button><button class="btn ghost" data-act="delete">Delete</button>`
-        :`<button class="btn" data-act="use">Log print</button><button class="btn" data-act="weigh">Weigh-in</button><button class="btn" data-act="edit">Edit</button><button class="btn" data-act="sell">Sell spool</button><button class="btn ghost" data-act="archive">Mark empty</button>`}
+        ${s.archived?`${sl.length?`<button class="btn" data-act="unsell">Undo last sale</button>`:`<button class="btn" data-act="restore">Restore</button>`}<button class="btn ghost" data-act="delete">Delete</button>`
+        :`<button class="btn" data-act="use">Log print</button><button class="btn" data-act="weigh">Weigh-in</button><button class="btn" data-act="edit">Edit</button><button class="btn" data-act="buy">Bought more</button><button class="btn" data-act="sell">Sell</button>${sl.length?`<button class="btn ghost" data-act="unsell">Undo last sale</button>`:""}<button class="btn ghost" data-act="archive">${q>1?"Open next spool":"Mark empty"}</button>`}
       </div></article>`}).join("");
 
   const byId=Object.fromEntries(spools.map(s=>[s.id,s]));
@@ -364,6 +381,12 @@ function render(){
 
 /* ---------- actions ---------- */
 const spool=id=>data.spools.find(s=>s.id===id);
+/* Take grams off the open spool; roll onto sealed spools when it runs out. Returns how many new spools were opened. */
+function consume(s,g){let opened=0;s.remaining-=g;
+  while(s.remaining<0&&qtyOf(s)>1){s.qty=qtyOf(s)-1;s.remaining+=s.total;opened++}
+  if(s.remaining<0)s.remaining=0;return opened}
+/* Put grams back (undo a print); fills the open spool, then re-seals extra. */
+function restore(s,g){s.remaining+=g;while(s.remaining>s.total){s.remaining-=s.total;s.qty=qtyOf(s)+1}}
 function inlineForm(slot,html,onSave){
   slot.innerHTML=`<form class="inline-form">${html}<button class="btn primary">Save</button><button type="button" class="btn ghost" data-act="cancel">Cancel</button></form>`;
   slot.querySelector("input").focus();
@@ -376,18 +399,33 @@ $("grid").addEventListener("click",e=>{
       <label>Sold for ₹ <span class="opt">optional</span><input name="sale" type="number" min="0" step="1"></label><label class="check"><input name="failed" type="checkbox"> Failed print</label>`,
     f=>{const g=Number(f.g.value)||0,p={id:uid(),spoolId:s.id,grams:g,title:f.t.value||"Print",at:new Date().toISOString(),cost:g*cpg(s)};
       if(f.failed.checked)p.failed=true;else if(f.sale.value!=="")p.sale=Number(f.sale.value);
-      data.prints.push(p);s.remaining=Math.max(0,s.remaining-g);toast(`Logged ${g} g from ${s.name}`)});
+      data.prints.push(p);const opened=consume(s,g);toast(`Logged ${g} g from ${s.name}${opened?` · opened ${opened} new spool${opened>1?"s":""}`:""}`)});
   if(act==="weigh")return inlineForm(slot,`<label>${s.tare?"Scale reading (g)":"Filament left (g)"}<input name="g" type="number" min="0" required></label>`,
     f=>{const g=Number(f.g.value)||0;s.remaining=Math.max(0,Math.round(s.tare?g-s.tare:g));toast(`${s.name}: ${s.remaining} g left`)});
-  if(act==="edit")return inlineForm(slot,`<label>Name<input name="n" value="${esc(s.name)}" required></label><label>Price paid ₹<input name="price" type="number" min="0" value="${s.price||""}"></label>
-      <label>Net weight g<input name="total" type="number" min="1" value="${s.total}"></label><label>Empty spool g<input name="tare" type="number" min="0" value="${s.tare||""}"></label>`,
-    f=>{s.name=f.n.value;s.price=Number(f.price.value)||0;s.total=Number(f.total.value)||s.total;s.tare=Number(f.tare.value)||0;toast(`${s.name} updated`)});
-  if(act==="sell")return inlineForm(slot,`<label>Sold for ₹<input name="v" type="number" min="0" required></label>`,
-    f=>{s.sold=true;s.soldFor=Number(f.v.value)||0;s.soldCost=s.remaining*cpg(s);s.soldGrams=s.remaining;s.remaining=0;s.archived=true;
-      const pr=s.soldFor-s.soldCost;toast(`${s.name} sold · ${pr<0?"loss":"profit"} ${rs(Math.abs(pr))}`)});
+  if(act==="edit")return inlineForm(slot,`<label>Name<input name="n" value="${esc(s.name)}" required></label><label>Price per spool ₹<input name="price" type="number" min="0" value="${s.price||""}"></label>
+      <label>Spools on hand<input name="q" type="number" min="1" step="1" value="${qtyOf(s)}"></label>
+      <label>Net weight per spool g<input name="total" type="number" min="1" value="${s.total}"></label><label>Empty spool g<input name="tare" type="number" min="0" value="${s.tare||""}"></label>`,
+    f=>{const nq=Math.max(1,Math.round(Number(f.q.value)||1)),old=qtyOf(s);
+      s.name=f.n.value;s.price=Number(f.price.value)||0;s.total=Number(f.total.value)||s.total;s.tare=Number(f.tare.value)||0;
+      s.bought=Math.max(1,(s.bought||old)+(nq-old));s.qty=nq;toast(`${s.name} updated`)});
+  if(act==="buy")return inlineForm(slot,`<label>How many spools<input name="n" type="number" min="1" step="1" value="1" required></label><label>Price each ₹<input name="price" type="number" min="0" value="${s.price||""}"></label>`,
+    f=>{const n=Math.max(1,Math.round(Number(f.n.value)||1)),pr=Number(f.price.value)||0;
+      const oldB=s.bought||qtyOf(s);
+      if(pr&&s.price&&pr!==s.price)s.price=Math.round((s.price*oldB+pr*n)/(oldB+n)); else if(pr)s.price=pr; // average price across purchases
+      s.qty=qtyOf(s)+n;s.bought=oldB+n;toast(`Added ${n} spool${n>1?"s":""} of ${s.name} · ${s.qty} on hand`)});
+  if(act==="sell"){const q=qtyOf(s);
+    return inlineForm(slot,`<label>How many spools<input name="n" type="number" min="1" max="${q}" step="1" value="1" required></label><label>Sold for ₹ (total)<input name="v" type="number" min="0" required></label>
+      <p class="opt">${q>1?`Sealed spools are sold first. Selling all ${q} includes the open one with ${Math.round(s.remaining)} g left.`:`Sells the open spool with ${Math.round(s.remaining)} g left.`}</p>`,
+    f=>{const n=Math.min(q,Math.max(1,Math.round(Number(f.n.value)||1))),v=Number(f.v.value)||0;
+      const sealed=Math.min(n,q-1),withOpen=n>sealed;
+      const grams=sealed*s.total+(withOpen?s.remaining:0),cost=grams*cpg(s);
+      (s.sales=s.sales||[]).push({qty:n,for:v,cost,grams,at:new Date().toISOString(),prevQty:q,prevRemaining:s.remaining});
+      if(withOpen){s.remaining=0;s.qty=1;s.archived=true;s.soldOut=true}else s.qty=q-n;
+      const pr=v-cost;toast(`Sold ${n} spool${n>1?"s":""} · ${pr<0?"loss":"profit"} ${rs(Math.abs(pr))}`)})}
+  if(act==="unsell"){const x=salesOf(s).pop();if(!x)return;s.qty=x.prevQty;s.remaining=x.prevRemaining;s.archived=false;delete s.soldOut;toast("Sale undone")}
   if(act==="cancel")return render();
-  if(act==="archive"){s.archived=true;toast(`${s.name} marked empty`)}
-  if(act==="restore"){if(s.sold){s.remaining=s.soldGrams||0;delete s.sold;delete s.soldFor;delete s.soldCost;delete s.soldGrams}s.archived=false}
+  if(act==="archive"){if(qtyOf(s)>1){s.qty=qtyOf(s)-1;s.remaining=s.total;toast(`Opened a new spool of ${s.name} · ${s.qty} left`)}else{s.archived=true;toast(`${s.name} marked empty`)}}
+  if(act==="restore")s.archived=false;
   if(act==="delete"){if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Tap again to delete";b.style.color="var(--low)";setTimeout(render,3500);return}
     data.spools=data.spools.filter(x=>x!==s);toast("Spool deleted")}
   commit();
@@ -404,7 +442,7 @@ $("logBody").addEventListener("click",e=>{
   if(un){const p=data.prints.find(x=>x.id===un.dataset.unsell);delete p.sale;commit();return}
   const b=e.target.closest("[data-undo]");if(!b)return;
   const p=data.prints.find(x=>x.id===b.dataset.undo);if(!p)return;
-  const s=spool(p.spoolId);if(s)s.remaining+=p.grams;
+  const s=spool(p.spoolId);if(s)restore(s,p.grams);
   data.prints=data.prints.filter(x=>x!==p);toast(`Put ${Math.round(p.grams)} g back`);commit();
 });
 $("filterMat").onchange=render;
@@ -412,13 +450,14 @@ $("toggleArchived").onclick=()=>{showArchived=!showArchived;render()};
 $("openAdd").onclick=()=>{$("addForm").hidden=false;$("fName").focus()};
 $("cancelAdd").onclick=()=>$("addForm").hidden=true;
 $("addForm").onsubmit=e=>{e.preventDefault();const total=Number($("fTotal").value)||1000,r=$("fRemain").value;
-  data.spools.push({id:uid(),name:$("fName").value,brand:$("fBrand").value,material:$("fMat").value,color:$("fColor").value,total,
+  const q=Math.max(1,Math.round(Number($("fQty").value)||1));
+  data.spools.push({id:uid(),name:$("fName").value,brand:$("fBrand").value,material:$("fMat").value,color:$("fColor").value,total,qty:q,bought:q,
     remaining:r!==""?Number(r):total,tare:Number($("fTare").value)||0,price:Number($("fPrice").value)||0,archived:false,added:new Date().toISOString()});
-  e.target.reset();$("addForm").hidden=true;toast("Spool added");commit()};
+  e.target.reset();$("addForm").hidden=true;toast(q>1?`Added ${q} spools`:"Spool added");commit()};
 $("exportBtn").onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(data,null,1));toast("Copied your data to the clipboard")}catch{toast("Copy isn't allowed here")}};
 
 /* ---------- boot ---------- */
-try{const d=JSON.parse(ls.get("fs.data")||"null");if(d)data={spools:d.spools||[],prints:d.prints||[]}}catch{}
+try{const d=JSON.parse(ls.get("fs.data")||"null");if(d)data=normalize(d)}catch{}
 syncUi();render();
 if(token&&gistId)pull().catch(e=>setState("Couldn't load from GitHub: "+e.message+". Showing this browser's copy.",true));
 </script>
