@@ -97,12 +97,6 @@ header.top{display:flex;justify-content:space-between;align-items:end;gap:16px;f
 .panel input[type=color]{padding:2px;height:40px}
 
 /* log */
-.log{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
-.log table{width:100%;border-collapse:collapse;font-size:14px;min-width:480px}
-.log th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
-.log td{padding:9px 14px;border-bottom:1px solid var(--line)}
-.log tr:last-child td{border-bottom:0}
-.log td.r,.log th.r{text-align:right}
 .swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline;border:1px solid var(--line)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;z-index:20}
 @media (prefers-reduced-motion:no-preference){.reel{transition:background .4s}}
@@ -125,13 +119,61 @@ footer{display:flex;align-items:center;gap:4px}
 label.check{flex-direction:row;align-items:center;gap:6px;font-size:13px;align-self:center}
 label.check input{width:auto}
 .opt{font-weight:400}
-.nowrap{white-space:nowrap}
-.sale-form{display:flex;gap:4px;justify-content:flex-end}
-.sale-form input{width:80px;padding:4px 6px}
-.sale-form .btn{padding:4px 8px}
-.log table{min-width:720px}
 .chip.qty{border-color:var(--accent);color:var(--accent)}
 .inline-form .opt{flex-basis:100%;margin:0;font-size:12px;color:var(--muted)}
+
+/* print log */
+.seg{display:inline-flex;gap:2px;padding:3px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:5px 12px;border-radius:6px;cursor:pointer}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 14%,transparent)}
+.logsum{display:flex;flex-wrap:wrap;gap:6px 28px;margin:0 0 6px;padding:2px 2px 0}
+.logsum:empty{display:none}
+.logsum div{display:flex;flex-direction:column}
+.logsum dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.logsum dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:17px;font-weight:600}
+.day{margin-top:18px}
+.day-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding:0 2px 8px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.day-head h3{margin:0;font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.03em;text-transform:uppercase}
+.day-head .meta{font-size:12px}
+.prints{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pr{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(150px,auto);grid-template-areas:"reel main grams money";gap:4px 18px;align-items:center;
+  background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:10px;padding:12px 16px 12px 14px}
+.pr.failed{border-style:dashed;border-left-style:solid;background:color-mix(in srgb,var(--low-bg) 45%,var(--surface))}
+.pr-reel{grid-area:reel;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);
+  background:radial-gradient(circle,var(--surface) 0 26%,var(--line) 27% 31%,var(--c) 32%)}
+.pr-main{grid-area:main;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pr-title{font-weight:700;font-size:15px;line-height:1.3;overflow-wrap:anywhere}
+.pr-sub{font-size:12.5px;color:var(--muted)}
+.pr-links{display:flex;gap:14px;margin-top:2px}
+.link{border:0;background:none;padding:0;font:inherit;font-size:12px;color:var(--muted);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.link:hover{color:var(--ink)}
+.link.armed{color:var(--low);font-weight:700}
+.pr-g{grid-area:grams;display:flex;flex-direction:column;align-items:flex-end;gap:0}
+.pr-g b{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1.1}
+.pr-g small{font-size:12px;color:var(--muted);margin-left:2px;font-weight:400}
+.pr-g .meta{font-size:11px}
+.pr-money{grid-area:money;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding-left:16px;border-left:1px solid var(--line)}
+.m-row{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted)}
+.m-row b,.m-row .num{color:var(--ink);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pill{align-self:flex-end;font-family:var(--mono);font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;margin-top:2px}
+.pill.pos{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.pill.neg{color:var(--low);background:color-mix(in srgb,var(--low) 14%,transparent)}
+.btn.sell{margin-top:3px;padding:5px 10px;font-size:13px;border-color:var(--accent);color:var(--accent)}
+.btn.sell:hover{background:var(--accent);color:var(--accent-ink)}
+.sale-form{display:flex;flex-direction:column;gap:6px}
+.sale-form input{padding:6px 8px}
+.sale-btns{display:flex;gap:6px;justify-content:flex-end}
+.sale-btns .btn{padding:5px 10px;font-size:13px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.btn.more{display:block;margin:14px auto 0}
+@media (max-width:620px){
+  .pr{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"reel main grams" "money money money";gap:10px 12px}
+  .pr-money{padding:10px 0 0;border-left:0;border-top:1px solid var(--line);flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 16px}
+  .pr-money .m-row{gap:6px}
+  .pr-money .pill,.pr-money .btn.sell{margin:0 0 0 auto}
+  .sale-form{flex:1;flex-direction:row;flex-wrap:wrap}.sale-form input{flex:1;min-width:120px}
+}
 </style>
 </head>
 <body>
@@ -212,11 +254,18 @@ label.check input{width:auto}
   </section>
 
   <section aria-labelledby="logH">
-    <div class="section-head"><h2 id="logH">Print log</h2><span class="meta">Latest 40 entries</span></div>
-    <div class="log"><table>
-      <thead><tr><th>When</th><th>What</th><th>Spool</th><th class="r">Used</th><th class="r">Cost</th><th class="r">Sold for</th><th class="r">Profit</th><th></th></tr></thead>
-      <tbody id="logBody"></tbody>
-    </table></div>
+    <div class="section-head">
+      <h2 id="logH">Print log</h2>
+      <div class="seg" role="group" aria-label="Show prints">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="sold" aria-pressed="false">Sold</button>
+        <button type="button" data-f="unsold" aria-pressed="false">Not sold</button>
+        <button type="button" data-f="failed" aria-pressed="false">Failed</button>
+      </div>
+    </div>
+    <dl class="logsum" id="logSum"></dl>
+    <div id="logList"></div>
+    <button type="button" class="btn more" id="logMore" hidden>Show older prints</button>
   </section>
   <footer class="meta">Backup: <button class="btn ghost" id="exportBtn">Copy data as JSON</button></footer>
 </div>
@@ -366,18 +415,52 @@ function render(){
       </div></article>`}).join("");
 
   const byId=Object.fromEntries(spools.map(s=>[s.id,s]));
-  const recent=[...prints].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,40);
-  $("logBody").innerHTML=recent.length?recent.map(p=>{const s=byId[p.spoolId],c=costOf(p),pr=isSold(p)?p.sale-c:null;return `<tr data-pid="${esc(p.id)}">
-    <td class="meta" title="${esc(new Date(p.at).toLocaleString())}">${ago(p.at)}</td>
-    <td>${esc(p.title||"Print")}${p.failed?' <span class="chip low">Failed</span>':""}</td>
-    <td>${s?`<span class="swatch" style="background:${esc(s.color)}"></span>${esc(s.name)}`:'<span class="meta">removed spool</span>'}</td>
-    <td class="r num">${Math.round(p.grams)} g</td>
-    <td class="r num">${c?rs(c):'<span class="meta">–</span>'}</td>
-    <td class="r num" data-salecell>${isSold(p)?rs(p.sale):p.failed?'<span class="meta">–</span>':`<button class="btn ghost" data-sold="${esc(p.id)}">Sold?</button>`}</td>
-    <td class="r num ${pr==null?(p.failed?"neg":""):pr<0?"neg":"pos"}">${pr!=null?rs(pr):p.failed?rs(-c):'<span class="meta">–</span>'}</td>
-    <td class="r nowrap">${isSold(p)?`<button class="btn ghost" data-unsell="${esc(p.id)}" title="Remove the sale">Unsell</button>`:""}<button class="btn ghost" data-undo="${esc(p.id)}" title="Delete entry and put the filament back">Undo</button></td></tr>`}).join("")
-    :'<tr><td colspan="8" class="meta">Prints you log will show here, newest first.</td></tr>';
+  renderLog(byId);
 }
+
+/* ---------- print log ---------- */
+let logFilter="all", logLimit=40;
+const LOG_FILTERS={all:()=>true,sold:isSold,unsold:p=>!isSold(p)&&!p.failed,failed:p=>!!p.failed};
+const EMPTY_LOG={all:"No prints yet. Use <b>Log print</b> on a spool after each job.",sold:"Nothing sold yet. Tap <b>Mark sold</b> on a print when it sells.",unsold:"Every logged print is sold or marked failed.",failed:"No failed prints. Nice."};
+const dayKey=iso=>{const d=new Date(iso);return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()};
+function dayLabel(iso){const d=new Date(iso),t=new Date(),y=new Date(Date.now()-864e5);
+  if(dayKey(iso)===dayKey(t.toISOString()))return"Today";if(dayKey(iso)===dayKey(y.toISOString()))return"Yesterday";
+  return d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short",...(d.getFullYear()!==t.getFullYear()?{year:"numeric"}:{})})}
+const clock=iso=>new Date(iso).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+const signed=v=>(v>0?"+":"")+rs(v);
+const resultOf=p=>isSold(p)?p.sale-costOf(p):p.failed?-costOf(p):0;
+function renderLog(byId){
+  const sum=(arr,f)=>arr.reduce((a,x)=>a+(f(x)||0),0);
+  const list=data.prints.filter(LOG_FILTERS[logFilter]).sort((a,b)=>b.at.localeCompare(a.at));
+  document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.f===logFilter)));
+  const sold=list.filter(isSold),net=sum(list,resultOf);
+  $("logSum").innerHTML=list.length?`<div><dt>Prints</dt><dd>${list.length}</dd></div><div><dt>Filament</dt><dd>${fmtG(sum(list,p=>p.grams))}</dd></div>
+    <div><dt>Filament cost</dt><dd>${rs(sum(list,costOf))}</dd></div><div><dt>Sales</dt><dd>${rs(sum(sold,p=>p.sale))}</dd></div>
+    <div><dt>${net<0?"Loss":"Profit"}</dt><dd class="${net<0?"neg":net>0?"pos":""}">${rs(Math.abs(net))}</dd></div>`:"";
+  if(!list.length){$("logList").innerHTML=`<div class="empty">${EMPTY_LOG[logFilter]}</div>`;$("logMore").hidden=true;return}
+  const shown=list.slice(0,logLimit),groups=[];
+  for(const p of shown){const k=dayKey(p.at);if(!groups.length||groups[groups.length-1].k!==k)groups.push({k,label:dayLabel(p.at),items:[]});groups[groups.length-1].items.push(p)}
+  $("logList").innerHTML=groups.map(g=>{const dn=sum(g.items,resultOf);
+    return `<section class="day"><header class="day-head"><h3>${g.label}</h3><span class="mono meta">${g.items.length} print${g.items.length>1?"s":""} · ${fmtG(sum(g.items,p=>p.grams))}${dn?` · <span class="${dn<0?"neg":"pos"}">${signed(dn)}</span>`:""}</span></header>
+    <ul class="prints">${g.items.map(p=>printItem(p,byId[p.spoolId])).join("")}</ul></section>`}).join("");
+  $("logMore").hidden=list.length<=logLimit;
+  $("logMore").textContent=`Show older prints (${list.length-logLimit} more)`;
+}
+function printItem(p,s){
+  const c=costOf(p),st=isSold(p)?"sold":p.failed?"failed":"open",r=resultOf(p);
+  const money=st==="sold"?`<div class="m-row"><span>Sold</span><b class="num">${rs(p.sale)}</b></div><div class="m-row"><span>Cost</span><span class="num">${c?rs(c):"–"}</span></div><span class="pill ${r<0?"neg":"pos"}">${r<0?"Loss":"Profit"} ${rs(Math.abs(r))}</span>`
+    :st==="failed"?`<div class="m-row"><span>Wasted</span><span class="num">${c?rs(c):"–"}</span></div><span class="pill neg">Loss ${rs(c)}</span>`
+    :`<div class="m-row"><span>Cost</span><span class="num">${c?rs(c):"–"}</span></div><button type="button" class="btn sell" data-sold="${esc(p.id)}">Mark sold</button>`;
+  return `<li class="pr ${st}" data-pid="${esc(p.id)}" style="--c:${esc(s?.color||"#888")}">
+    <span class="pr-reel" aria-hidden="true"></span>
+    <div class="pr-main">
+      <div class="pr-title">${esc(p.title||"Print")}${st==="failed"?' <span class="chip low">Failed</span>':""}</div>
+      <div class="pr-sub">${s?esc(s.name)+" · "+esc(s.material):'<span>removed spool</span>'} · ${clock(p.at)}</div>
+      <div class="pr-links">${st==="sold"?`<button type="button" class="link" data-unsell="${esc(p.id)}">Remove sale</button>`:""}<button type="button" class="link" data-undo="${esc(p.id)}" title="Delete this entry and put the filament back on the spool">Delete</button></div>
+    </div>
+    <div class="pr-g"><b class="num">${Math.round(p.grams)}<small>g</small></b>${s?`<span class="meta">≈ ${meters(p.grams,s.material).toFixed(1)} m</span>`:""}</div>
+    <div class="pr-money" data-money>${money}</div>
+  </li>`}
 
 /* ---------- actions ---------- */
 const spool=id=>data.spools.find(s=>s.id===id);
@@ -430,20 +513,24 @@ $("grid").addEventListener("click",e=>{
     data.spools=data.spools.filter(x=>x!==s);toast("Spool deleted")}
   commit();
 });
-$("logBody").addEventListener("click",e=>{
+document.querySelector(".seg").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(!b)return;logFilter=b.dataset.f;logLimit=40;render()});
+$("logMore").onclick=()=>{logLimit+=40;render()};
+$("logList").addEventListener("click",e=>{
   const sold=e.target.closest("[data-sold]");
-  if(sold){const p=data.prints.find(x=>x.id===sold.dataset.sold),cell=sold.closest("td");
-    cell.innerHTML=`<form class="sale-form"><input type="number" min="0" placeholder="₹" aria-label="Sale price" required><button class="btn primary">Save</button></form>`;
-    cell.querySelector("input").focus();
-    cell.querySelector("form").onsubmit=ev=>{ev.preventDefault();p.sale=Number(ev.target.querySelector("input").value)||0;
+  if(sold){const p=data.prints.find(x=>x.id===sold.dataset.sold),box=sold.closest("[data-money]");
+    box.innerHTML=`<form class="sale-form"><label class="sr" for="sale-${esc(p.id)}">Sale price</label><input id="sale-${esc(p.id)}" type="number" min="0" placeholder="Sold for ₹" required><div class="sale-btns"><button class="btn primary">Save</button><button type="button" class="btn ghost" data-cancel>Cancel</button></div></form>`;
+    box.querySelector("input").focus();
+    box.querySelector("form").onsubmit=ev=>{ev.preventDefault();p.sale=Number(ev.target.querySelector("input").value)||0;
       const pr=p.sale-costOf(p);toast(`${p.title}: ${pr<0?"loss":"profit"} ${rs(Math.abs(pr))}`);commit()};
     return}
+  if(e.target.closest("[data-cancel]"))return render();
   const un=e.target.closest("[data-unsell]");
-  if(un){const p=data.prints.find(x=>x.id===un.dataset.unsell);delete p.sale;commit();return}
+  if(un){const p=data.prints.find(x=>x.id===un.dataset.unsell);delete p.sale;toast("Sale removed");commit();return}
   const b=e.target.closest("[data-undo]");if(!b)return;
+  if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Tap again to delete";b.classList.add("armed");setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Delete";b.classList.remove("armed")}},3500);return}
   const p=data.prints.find(x=>x.id===b.dataset.undo);if(!p)return;
   const s=spool(p.spoolId);if(s)restore(s,p.grams);
-  data.prints=data.prints.filter(x=>x!==p);toast(`Put ${Math.round(p.grams)} g back`);commit();
+  data.prints=data.prints.filter(x=>x!==p);toast(`Deleted · put ${Math.round(p.grams)} g back`);commit();
 });
 $("filterMat").onchange=render;
 $("toggleArchived").onclick=()=>{showArchived=!showArchived;render()};
