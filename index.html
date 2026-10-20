@@ -114,6 +114,22 @@ header.top{display:flex;justify-content:space-between;align-items:end;gap:16px;f
 .sync-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 footer{display:flex;align-items:center;gap:4px}
+.pos{color:var(--ok)} .neg{color:var(--low)}
+.money{display:grid;grid-template-columns:minmax(200px,1fr) 2fr;gap:20px;align-items:center;padding-block:16px;border-top:2px solid var(--ink);border-bottom:1px solid var(--line)}
+.money-net .net{font-family:var(--display);font-weight:800;font-size:clamp(30px,5vw,42px);line-height:1;font-variant-numeric:tabular-nums;margin-block:4px}
+.money-net .meta{max-width:34ch}
+.money-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 20px;margin:0}
+.money-grid dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.money-grid dd{margin:2px 0 0;font-family:var(--mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+@media (max-width:640px){.money{grid-template-columns:1fr}.money-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+label.check{flex-direction:row;align-items:center;gap:6px;font-size:13px;align-self:center}
+label.check input{width:auto}
+.opt{font-weight:400}
+.nowrap{white-space:nowrap}
+.sale-form{display:flex;gap:4px;justify-content:flex-end}
+.sale-form input{width:80px;padding:4px 6px}
+.sale-form .btn{padding:4px 8px}
+.log table{min-width:720px}
 </style>
 </head>
 <body>
@@ -130,6 +146,22 @@ footer{display:flex;align-items:center;gap:4px}
       <div class="stat"><div class="eyebrow">Used, 30 days</div><div class="v" id="sUsed">–</div></div>
     </div>
   </header>
+
+  <section class="money" aria-labelledby="moneyH">
+    <div class="money-net">
+      <div class="eyebrow" id="moneyH">Overall</div>
+      <div class="net" id="mNet">₹0</div>
+      <div class="meta" id="mNetNote">Profit from sales, minus filament lost to failed prints</div>
+    </div>
+    <dl class="money-grid">
+      <div><dt>Spent on filament</dt><dd id="mSpent">₹0</dd></div>
+      <div><dt>Stock value left</dt><dd id="mStock">₹0</dd></div>
+      <div><dt>Sales</dt><dd id="mSales">₹0</dd></div>
+      <div><dt>Cost of sold items</dt><dd id="mSoldCost">₹0</dd></div>
+      <div><dt>Profit on sales</dt><dd id="mProfit">₹0</dd></div>
+      <div><dt>Lost to failed prints</dt><dd id="mFailed">₹0</dd></div>
+    </dl>
+  </section>
 
   <section class="agent" aria-labelledby="syncH">
     <div class="sync-row">
@@ -169,7 +201,7 @@ footer{display:flex;align-items:center;gap:4px}
       <label>Net weight (g)<input id="fTotal" type="number" min="1" value="1000"></label>
       <label>Remaining (g)<input id="fRemain" type="number" min="0" placeholder="same as net"></label>
       <label>Empty spool (g)<input id="fTare" type="number" min="0" placeholder="for weigh-ins, e.g. 220"></label>
-      <label>Price paid (₹)<input id="fPrice" type="number" min="0" placeholder="optional"></label>
+      <label>Price paid (₹)<input id="fPrice" type="number" min="0" placeholder="e.g. 1299"></label>
       <div class="full"><button type="button" class="btn" id="cancelAdd">Cancel</button><button class="btn primary" type="submit">Save spool</button></div>
     </form>
     <div class="grid" id="grid"></div>
@@ -179,7 +211,7 @@ footer{display:flex;align-items:center;gap:4px}
   <section aria-labelledby="logH">
     <div class="section-head"><h2 id="logH">Print log</h2><span class="meta">Latest 40 entries</span></div>
     <div class="log"><table>
-      <thead><tr><th>When</th><th>What</th><th>Spool</th><th class="r">Used</th><th></th></tr></thead>
+      <thead><tr><th>When</th><th>What</th><th>Spool</th><th class="r">Used</th><th class="r">Cost</th><th class="r">Sold for</th><th class="r">Profit</th><th></th></tr></thead>
       <tbody id="logBody"></tbody>
     </table></div>
   </section>
@@ -196,6 +228,10 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const fmtG=g=>g>=1000?(g/1000).toFixed(2)+" kg":Math.round(g)+" g";
 const meters=(g,mat)=>g/(DENS[mat]||1.24)/AREA;
 const isLow=s=>!s.archived&&(s.remaining<LOW_G||s.remaining/(s.total||1000)<LOW_FRAC);
+const rs=v=>(v<0?"−₹":"₹")+Math.abs(Math.round(v)).toLocaleString("en-IN");
+const cpg=s=>s&&s.price&&s.total?s.price/s.total:0; // rupees per gram
+const costOf=p=>{const s=data.spools.find(x=>x.id===p.spoolId);return s&&cpg(s)?p.grams*cpg(s):(p.cost||0)};
+const isSold=p=>typeof p.sale==="number";
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
 function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
 function ago(iso){const d=(Date.now()-new Date(iso))/864e5;if(d<1/24)return"just now";if(d<1)return Math.round(d*24)+" h ago";if(d<14)return Math.round(d)+" d ago";return new Date(iso).toLocaleDateString(undefined,{day:"numeric",month:"short"})}
@@ -262,64 +298,110 @@ function render(){
   $("sGrams").innerHTML=unit(active.reduce((a,s)=>a+s.remaining,0));
   const low=active.filter(isLow).length;$("sLow").textContent=low;$("sLowWrap").classList.toggle("warn",low>0);
   const cut=Date.now()-30*864e5;$("sUsed").innerHTML=unit(prints.filter(p=>new Date(p.at)>cut).reduce((a,p)=>a+(p.grams||0),0));
+
+  /* money */
+  const sum=(arr,f)=>arr.reduce((a,x)=>a+(f(x)||0),0);
+  const soldP=prints.filter(isSold), soldS=spools.filter(s=>s.sold);
+  const sales=sum(soldP,p=>p.sale)+sum(soldS,s=>s.soldFor);
+  const soldCost=sum(soldP,costOf)+sum(soldS,s=>s.soldCost);
+  const failed=sum(prints.filter(p=>p.failed),costOf);
+  const profit=sales-soldCost, net=profit-failed;
+  $("mSpent").textContent=rs(sum(spools,s=>s.price));
+  $("mStock").textContent=rs(sum(active,s=>s.remaining*cpg(s)));
+  $("mSales").textContent=rs(sales);
+  $("mSoldCost").textContent=rs(soldCost);
+  $("mProfit").textContent=rs(profit);$("mProfit").className=profit<0?"neg":profit>0?"pos":"";
+  $("mFailed").textContent=rs(failed);$("mFailed").className=failed>0?"neg":"";
+  $("mNet").textContent=(net<0?"Loss ":"Profit ")+rs(Math.abs(net));
+  $("mNet").className="net "+(net<0?"neg":net>0?"pos":"");
+  const noPrice=active.filter(s=>!s.price).length;
+  $("mNetNote").textContent=noPrice?`${noPrice} spool${noPrice>1?"s have":" has"} no price yet, so costs are understated. Use Edit on the spool to add it.`:"Profit from sales, minus filament lost to failed prints";
+
   const fm=$("filterMat"),cur=fm.value,mats=[...new Set(spools.map(s=>s.material))].sort();
   fm.innerHTML='<option value="">All materials</option>'+mats.map(m=>`<option${m===cur?" selected":""}>${esc(m)}</option>`).join("");
-  $("toggleArchived").textContent=showArchived?"Hide empty":"Show empty";
+  $("toggleArchived").textContent=showArchived?"Hide empty & sold":"Show empty & sold";
   const list=spools.filter(s=>showArchived||!s.archived).filter(s=>!fm.value||s.material===fm.value)
     .sort((a,b)=>(a.archived-b.archived)||(isLow(b)-isLow(a))||a.material.localeCompare(b.material)||a.name.localeCompare(b.name));
   $("emptySpools").hidden=!!list.length;
   $("grid").innerHTML=list.map(s=>{
-    const pct=Math.max(0,Math.min(100,s.remaining/(s.total||1000)*100)),perG=s.price&&s.total?s.price/s.total:null;
+    const pct=Math.max(0,Math.min(100,s.remaining/(s.total||1000)*100)),perG=cpg(s);
+    const mine=prints.filter(p=>p.spoolId===s.id), mySold=mine.filter(isSold);
+    const earned=sum(mySold,p=>p.sale)+(s.sold?s.soldFor:0);
+    const myProfit=earned-sum(mySold,costOf)-(s.sold?s.soldCost:0)-sum(mine.filter(p=>p.failed),costOf);
     return `<article class="spool${isLow(s)?" low":""}" data-id="${esc(s.id)}">
       <div class="spool-top">
         <div class="reel" style="--p:${pct.toFixed(1)};--c:${esc(s.color||"#888")}" role="img" aria-label="${Math.round(pct)}% left"><span>${Math.round(pct)}%</span></div>
         <div style="min-width:0"><h3>${esc(s.name)}</h3><div class="meta">${esc(s.brand||"")}${s.brand?" · ":""}${esc(s.material)}</div>
-          <div class="chips">${isLow(s)?'<span class="chip low">Low</span>':""}${s.archived?'<span class="chip">Empty</span>':""}</div></div>
+          <div class="chips">${isLow(s)?'<span class="chip low">Low</span>':""}${s.sold?'<span class="chip">Sold</span>':s.archived?'<span class="chip">Empty</span>':""}</div></div>
       </div>
       <dl class="figs">
         <dt>Remaining</dt><dd>${Math.round(s.remaining)} / ${Math.round(s.total)} g</dd>
         <dt>Length left</dt><dd>≈ ${meters(s.remaining,s.material).toFixed(0)} m</dd>
-        ${perG?`<dt>Value left</dt><dd>₹${Math.round(perG*s.remaining)}</dd>`:""}
+        <dt>Price paid</dt><dd>${s.price?`${rs(s.price)} <span class="meta">(${rs(perG*1000)}/kg)</span>`:'<span class="meta">not set</span>'}</dd>
+        ${perG&&!s.archived?`<dt>Value left</dt><dd>${rs(perG*s.remaining)}</dd>`:""}
+        ${s.sold?`<dt>Spool sold for</dt><dd>${rs(s.soldFor)}</dd>`:""}
+        ${earned||myProfit?`<dt>Earned</dt><dd>${rs(earned)}</dd><dt>Profit</dt><dd class="${myProfit<0?"neg":"pos"}">${rs(myProfit)}</dd>`:""}
         ${s.tare?`<dt>Empty spool</dt><dd>${Math.round(s.tare)} g</dd>`:""}
       </dl>
       <div class="spool-actions" data-slot>
-        ${s.archived?`<button class="btn" data-act="restore">Restore</button>`:`<button class="btn" data-act="use">Log print</button><button class="btn" data-act="weigh">Weigh-in</button>`}
-        <button class="btn ghost" data-act="${s.archived?"delete":"archive"}">${s.archived?"Delete":"Mark empty"}</button>
+        ${s.archived?`<button class="btn" data-act="restore">${s.sold?"Undo sale":"Restore"}</button><button class="btn ghost" data-act="delete">Delete</button>`
+        :`<button class="btn" data-act="use">Log print</button><button class="btn" data-act="weigh">Weigh-in</button><button class="btn" data-act="edit">Edit</button><button class="btn" data-act="sell">Sell spool</button><button class="btn ghost" data-act="archive">Mark empty</button>`}
       </div></article>`}).join("");
+
   const byId=Object.fromEntries(spools.map(s=>[s.id,s]));
   const recent=[...prints].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,40);
-  $("logBody").innerHTML=recent.length?recent.map(p=>{const s=byId[p.spoolId];return `<tr>
-    <td class="meta" title="${esc(new Date(p.at).toLocaleString())}">${ago(p.at)}</td><td>${esc(p.title||"Print")}</td>
+  $("logBody").innerHTML=recent.length?recent.map(p=>{const s=byId[p.spoolId],c=costOf(p),pr=isSold(p)?p.sale-c:null;return `<tr data-pid="${esc(p.id)}">
+    <td class="meta" title="${esc(new Date(p.at).toLocaleString())}">${ago(p.at)}</td>
+    <td>${esc(p.title||"Print")}${p.failed?' <span class="chip low">Failed</span>':""}</td>
     <td>${s?`<span class="swatch" style="background:${esc(s.color)}"></span>${esc(s.name)}`:'<span class="meta">removed spool</span>'}</td>
-    <td class="r num">${Math.round(p.grams)} g</td><td class="r"><button class="btn ghost" data-undo="${esc(p.id)}">Undo</button></td></tr>`}).join("")
-    :'<tr><td colspan="5" class="meta">Prints you log will show here, newest first.</td></tr>';
+    <td class="r num">${Math.round(p.grams)} g</td>
+    <td class="r num">${c?rs(c):'<span class="meta">–</span>'}</td>
+    <td class="r num" data-salecell>${isSold(p)?rs(p.sale):p.failed?'<span class="meta">–</span>':`<button class="btn ghost" data-sold="${esc(p.id)}">Sold?</button>`}</td>
+    <td class="r num ${pr==null?(p.failed?"neg":""):pr<0?"neg":"pos"}">${pr!=null?rs(pr):p.failed?rs(-c):'<span class="meta">–</span>'}</td>
+    <td class="r nowrap">${isSold(p)?`<button class="btn ghost" data-unsell="${esc(p.id)}" title="Remove the sale">Unsell</button>`:""}<button class="btn ghost" data-undo="${esc(p.id)}" title="Delete entry and put the filament back">Undo</button></td></tr>`}).join("")
+    :'<tr><td colspan="8" class="meta">Prints you log will show here, newest first.</td></tr>';
 }
 
 /* ---------- actions ---------- */
 const spool=id=>data.spools.find(s=>s.id===id);
+function inlineForm(slot,html,onSave){
+  slot.innerHTML=`<form class="inline-form">${html}<button class="btn primary">Save</button><button type="button" class="btn ghost" data-act="cancel">Cancel</button></form>`;
+  slot.querySelector("input").focus();
+  slot.querySelector("form").onsubmit=ev=>{ev.preventDefault();onSave(ev.target);commit()};
+}
 $("grid").addEventListener("click",e=>{
   const b=e.target.closest("button[data-act]");if(!b)return;
   const card=b.closest(".spool"),s=spool(card.dataset.id),slot=card.querySelector("[data-slot]"),act=b.dataset.act;
-  if(act==="use"||act==="weigh"){
-    const isUse=act==="use";
-    slot.innerHTML=`<form class="inline-form">${isUse?`<label>What<input name="t" placeholder="Benchy"></label><label>Grams<input name="g" type="number" min="0" step="0.1" required></label>`
-      :`<label>${s.tare?"Scale reading (g)":"Filament left (g)"}<input name="g" type="number" min="0" required></label>`}
-      <button class="btn primary">Save</button><button type="button" class="btn ghost" data-act="cancel">Cancel</button></form>`;
-    slot.querySelector("input").focus();
-    slot.querySelector("form").onsubmit=ev=>{ev.preventDefault();const f=ev.target,g=Number(f.g.value)||0;
-      if(isUse){data.prints.push({id:uid(),spoolId:s.id,grams:g,title:f.t.value||"Print",at:new Date().toISOString()});s.remaining=Math.max(0,s.remaining-g);toast(`Logged ${g} g from ${s.name}`)}
-      else{s.remaining=Math.max(0,Math.round(s.tare?g-s.tare:g));toast(`${s.name}: ${s.remaining} g left`)}
-      commit()};
-    return;
-  }
+  if(act==="use")return inlineForm(slot,`<label>What<input name="t" placeholder="Benchy"></label><label>Grams<input name="g" type="number" min="0" step="0.1" required></label>
+      <label>Sold for ₹ <span class="opt">optional</span><input name="sale" type="number" min="0" step="1"></label><label class="check"><input name="failed" type="checkbox"> Failed print</label>`,
+    f=>{const g=Number(f.g.value)||0,p={id:uid(),spoolId:s.id,grams:g,title:f.t.value||"Print",at:new Date().toISOString(),cost:g*cpg(s)};
+      if(f.failed.checked)p.failed=true;else if(f.sale.value!=="")p.sale=Number(f.sale.value);
+      data.prints.push(p);s.remaining=Math.max(0,s.remaining-g);toast(`Logged ${g} g from ${s.name}`)});
+  if(act==="weigh")return inlineForm(slot,`<label>${s.tare?"Scale reading (g)":"Filament left (g)"}<input name="g" type="number" min="0" required></label>`,
+    f=>{const g=Number(f.g.value)||0;s.remaining=Math.max(0,Math.round(s.tare?g-s.tare:g));toast(`${s.name}: ${s.remaining} g left`)});
+  if(act==="edit")return inlineForm(slot,`<label>Name<input name="n" value="${esc(s.name)}" required></label><label>Price paid ₹<input name="price" type="number" min="0" value="${s.price||""}"></label>
+      <label>Net weight g<input name="total" type="number" min="1" value="${s.total}"></label><label>Empty spool g<input name="tare" type="number" min="0" value="${s.tare||""}"></label>`,
+    f=>{s.name=f.n.value;s.price=Number(f.price.value)||0;s.total=Number(f.total.value)||s.total;s.tare=Number(f.tare.value)||0;toast(`${s.name} updated`)});
+  if(act==="sell")return inlineForm(slot,`<label>Sold for ₹<input name="v" type="number" min="0" required></label>`,
+    f=>{s.sold=true;s.soldFor=Number(f.v.value)||0;s.soldCost=s.remaining*cpg(s);s.soldGrams=s.remaining;s.remaining=0;s.archived=true;
+      const pr=s.soldFor-s.soldCost;toast(`${s.name} sold · ${pr<0?"loss":"profit"} ${rs(Math.abs(pr))}`)});
   if(act==="cancel")return render();
   if(act==="archive"){s.archived=true;toast(`${s.name} marked empty`)}
-  if(act==="restore")s.archived=false;
+  if(act==="restore"){if(s.sold){s.remaining=s.soldGrams||0;delete s.sold;delete s.soldFor;delete s.soldCost;delete s.soldGrams}s.archived=false}
   if(act==="delete"){if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Tap again to delete";b.style.color="var(--low)";setTimeout(render,3500);return}
     data.spools=data.spools.filter(x=>x!==s);toast("Spool deleted")}
   commit();
 });
 $("logBody").addEventListener("click",e=>{
+  const sold=e.target.closest("[data-sold]");
+  if(sold){const p=data.prints.find(x=>x.id===sold.dataset.sold),cell=sold.closest("td");
+    cell.innerHTML=`<form class="sale-form"><input type="number" min="0" placeholder="₹" aria-label="Sale price" required><button class="btn primary">Save</button></form>`;
+    cell.querySelector("input").focus();
+    cell.querySelector("form").onsubmit=ev=>{ev.preventDefault();p.sale=Number(ev.target.querySelector("input").value)||0;
+      const pr=p.sale-costOf(p);toast(`${p.title}: ${pr<0?"loss":"profit"} ${rs(Math.abs(pr))}`);commit()};
+    return}
+  const un=e.target.closest("[data-unsell]");
+  if(un){const p=data.prints.find(x=>x.id===un.dataset.unsell);delete p.sale;commit();return}
   const b=e.target.closest("[data-undo]");if(!b)return;
   const p=data.prints.find(x=>x.id===b.dataset.undo);if(!p)return;
   const s=spool(p.spoolId);if(s)s.remaining+=p.grams;
